@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>神秘岛屿寻宝冒险</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        adventure: {
+                            brown: '#8B4513',
+                            sand: '#F5DEB3',
+                            sea: '#1E90FF',
+                            forest: '#228B22',
+                            temple: '#D2691E',
+                            treasure: '#FFD700'
+                        }
+                    },
+                    fontFamily: {
+                        adventure: ['"Pirata One"', '"Trebuchet MS"', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            }
+            .text-shadow-lg {
+                text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
+            }
+            .backdrop-blur {
+                backdrop-filter: blur(8px);
+            }
+            .scene-transition {
+                transition: all 1.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+            .pulse-slow {
+                animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            .float {
+                animation: float 6s ease-in-out infinite;
+            }
+            .shake {
+                animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+            }
+            .fade-in {
+                animation: fadeIn 1s ease-in forwards;
+            }
+            .item-glow {
+                animation: glow 2s ease-in-out infinite alternate;
+            }
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateX(0px); }
+        }
+        
+        @keyframes shake {
+            10%, 90% { transform: translateX(-1px); }
+            20%, 80% { transform: translateX(2px); }
+            30%, 50%, 70% { transform: translateX(-3px); }
+            40%, 60% { transform: translateX(3px); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes glow {
+            from { box-shadow: 0 0 5px rgba(139, 69, 19, 0.5); }
+            to { box-shadow: 0 0 15px rgba(139, 69, 19, 0.8); }
+        }
+    </style>
+    
+    <!-- 导入字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Pirata+One&display=swap" rel="stylesheet">
+</head>
+
+<body class="bg-adventure-sand min-h-screen overflow-x-hidden font-adventure text-gray-800">
+    <!-- 游戏声音控制器 -->
+    <div class="fixed top-4 right-4 z-50 flex gap-2">
+        <button id="soundToggle" class="bg-white/80 backdrop-blur p-2 rounded-full shadow-lg hover:bg-white transition-all">
+            <i class="fa fa-volume-up text-adventure-brown text-xl"></i>
+        </button>
+        <button id="restartBtn" class="bg-white/80 backdrop-blur p-2 rounded-full shadow-lg hover:bg-white transition-all">
+            <i class="fa fa-refresh text-adventure-brown text-xl"></i>
+        </button>
+    </div>
+
+    <!-- 游戏容器 -->
+    <div class="max-w-6xl mx-auto px-4 py-8 relative">
+        <!-- 标题区域 -->
+        <header class="text-center mb-8">
+            <h1 class="text-[clamp(2.5rem,5vw,4rem)] text-adventure-brown font-bold text-shadow-lg mb-2">神秘岛屿寻宝</h1>
+            <p class="text-[clamp(1rem,2vw,1.25rem)] text-gray-700 italic">解开谜题，找到传说中的宝藏</p>
+        </header>
+        
+        <!-- 进度追踪 -->
+        <div class="bg-white/60 backdrop-blur rounded-xl p-4 mb-6 shadow-md">
+            <div class="flex justify-between items-center mb-2">
+                <span class="font-bold text-adventure-brown">探险进度</span>
+                <span id="progressText" class="text-sm bg-adventure-brown/10 px-3 py-1 rounded-full">0%</span>
+            </div>
+            <div class="h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div id="progressBar" class="h-full bg-adventure-brown w-0 transition-all duration-1000"></div>
+            </div>
+            
+            <!-- 物品栏 -->
+            <div class="mt-4">
+                <span class="font-bold text-adventure-brown">已收集物品:</span>
+                <div id="inventory" class="flex gap-2 mt-2 flex-wrap">
+                    <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-400">
+                        <i class="fa fa-empty"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 物品详情弹窗 -->
+        <div id="itemDetailModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl transform transition-all">
+                <h3 id="itemDetailName" class="text-2xl font-bold text-adventure-brown mb-2"></h3>
+                <div id="itemDetailIcon" class="text-4xl text-adventure-brown mb-4"></div>
+                <p id="itemDetailDesc" class="mb-4"></p>
+                <p id="itemDetailUse" class="text-sm text-gray-600 italic mb-6"></p>
+                <button id="closeItemDetail" class="bg-adventure-brown hover:bg-adventure-brown/80 text-white font-bold py-2 px-6 rounded-lg shadow-md w-full transition-all">
+                    关闭
+                </button>
+            </div>
+        </div>
+        
+        <!-- 主游戏区域 -->
+        <div class="relative bg-white rounded-2xl shadow-xl overflow-hidden min-h-[500px]">
+            <!-- 场景容器 -->
+            <div id="sceneContainer" class="w-full h-[500px] relative">
+                <!-- 初始场景 -->
+                <div id="startScene" class="scene-transition absolute inset-0 bg-cover bg-center" style="background-image: url('https://picsum.photos/id/1015/1200/800');">
+                    <div class="absolute inset-0 bg-black/40"></div>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center text-white text-center p-6">
+                        <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] mb-6 text-shadow-lg">欢迎来到神秘岛屿</h2>
+                        <p class="text-[clamp(1rem,2vw,1.25rem)] max-w-lg mb-8 text-shadow">
+                            传说在这座岛屿上藏有一批失落已久的黄金宝藏。
+                            你将穿越森林、渡过河流、探索古老神庙，解开重重谜题。
+                            准备好开始这场冒险了吗？
+                        </p>
+                        <button id="startAdventure" class="bg-adventure-brown hover:bg-adventure-brown/80 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all">
+                            开始冒险 <i class="fa fa-compass ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 其他场景将通过JS动态显示 -->
+            </div>
+            
+            <!-- 交互区域 -->
+            <div id="interactionArea" class="p-6 bg-white/90 backdrop-blur">
+                <div id="narration" class="text-lg mb-6 min-h-[60px]">
+                    点击"开始冒险"按钮，踏上寻宝之旅！
+                </div>
+                
+                <div id="choices" class="flex flex-wrap gap-3 justify-center">
+                    <!-- 选择按钮将通过JS动态生成 -->
+                </div>
+                
+                <!-- 谜题区域 (默认隐藏) -->
+                <div id="puzzleArea" class="hidden mt-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                    <h3 class="text-xl font-bold mb-3 text-adventure-brown" id="puzzleTitle">谜题</h3>
+                    <div id="puzzleContent" class="mb-4">
+                        <!-- 谜题内容将通过JS动态生成 -->
+                    </div>
+                    <div id="puzzleSolution" class="flex gap-2">
+                        <!-- 谜题解答输入将通过JS动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 游戏提示 -->
+        <div class="mt-6 text-center text-gray-600 text-sm">
+            <p>提示: 点击物品栏中的物品可以查看详情，某些物品在特定场景中会发挥重要作用！</p>
+        </div>
+    </div>
+
+    <!-- 胜利和失败模态框 -->
+    <div id="resultModal" class="fixed inset-0 bg-black/70 backdrop-blur flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center shadow-2xl transform transition-all">
+            <div id="resultIcon" class="text-6xl mb-4"></div>
+            <h2 id="resultTitle" class="text-2xl font-bold mb-4"></h2>
+            <p id="resultMessage" class="mb-6"></p>
+            <button id="playAgainBtn" class="bg-adventure-brown hover:bg-adventure-brown/80 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all">
+                再玩一次 <i class="fa fa-refresh ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 游戏状态
+        const gameState = {
+            progress: 0,
+            inventory: [],
+            currentScene: 'start',
+            hasMap: false,
+            hasKey: false,
+            soundEnabled: true,
+            scenesCompleted: [],
+            hintsUsed: {} // 记录每个场景使用过的提示
+        };
+
+        // 游戏场景和情节定义
+        const gameScenes = {
+            beach: {
+                description: "你来到了岛屿的海滩，海浪拍打着岸边的礁石。远处是茂密的森林，左侧有一条蜿蜒的小路，右侧似乎有一个洞穴入口。",
+                background: "https://picsum.photos/id/1036/1200/800",
+                choices: [
+                    { text: "进入森林", nextScene: "forestEntrance" },
+                    { text: "探索洞穴", nextScene: "cave" },
+                    { text: "检查岸边", action: "searchShore" }
+                ],
+                items: []
+            },
+            forestEntrance: {
+                description: "森林入口处树木茂密，阳光很难穿透。你看到两条路：一条宽阔但看起来有人走过，另一条狭窄且布满荆棘。",
+                background: "https://picsum.photos/id/1043/1200/800",
+                choices: [
+                    { text: "走宽阔的路", nextScene: "forestPath" },
+                    { text: "走狭窄的路", action: "takeNarrowPath" },
+                    { text: "返回海滩", nextScene: "beach" }
+                ],
+                items: []
+            },
+            cave: {
+                description: "洞穴内阴暗潮湿，你只能看清前方几米的地方。墙壁上似乎有一些奇怪的刻痕。黑暗中你感觉需要照明工具才能继续探索。",
+                background: "https://picsum.photos/id/1039/1200/800",
+                choices: [
+                    { text: "深入洞穴", action: "exploreCaveDeep" },
+                    { text: "检查墙壁刻痕", action: "examineCaveWall" },
+                    { text: "返回海滩", nextScene: "beach" }
+                ],
+                items: []
+            },
+            forestPath: {
+                description: "这条路确实经常有人走，地面比较平坦。走了一段时间，你听到前方有流水声，似乎有一条河流。路边你注意到一棵倒下的大树，下面似乎藏着什么东西。",
+                background: "https://picsum.photos/id/1059/1200/800",
+                choices: [
+                    { text: "前往河边", nextScene: "river" },
+                    { text: "离开大路探索（能找到火把）", action: "exploreOffPath" },
+                    { text: "返回森林入口", nextScene: "forestEntrance" }
+                ],
+                items: []
+            },
+            river: {
+                description: "一条湍急的河流横亘在你面前，水流看起来很深。河上没有桥，但有一些大石头露出水面。远处河对岸似乎有一座建筑物的轮廓。",
+                background: "https://picsum.photos/id/131/1200/800",
+                choices: [
+                    { text: "尝试踩着石头过河", action: "crossRiverStones" },
+                    { text: "沿河寻找其他过河点", action: "searchForCrossing" },
+                    { text: "返回森林", nextScene: "forestPath" }
+                ],
+                items: []
+            },
+            templeEntrance: {
+                description: "你来到了一座古老的神庙前，神庙入口巨大，上面刻满了神秘的符号。门口有两个巨大的石像守卫着。",
+                background: "https://picsum.photos/id/1052/1200/800",
+                choices: [
+                    { text: "进入神庙", action: "enterTemple" },
+                    { text: "检查石像", action: "examineStatues" },
+                    { text: "查看周围环境", action: "surveyArea" }
+                ],
+                items: []
+            },
+            templeInterior: {
+                description: "神庙内部昏暗，空气中弥漫着尘埃的味道。大厅中央有一个石台，上面似乎放着什么东西。四周有几个通道通往不同的方向。",
+                background: "https://picsum.photos/id/1057/1200/800",
+                choices: [
+                    { text: "检查石台（重要物品）", action: "checkAltar" },
+                    { text: "探索左侧通道", nextScene: "templeLeft" },
+                    { text: "探索右侧通道（较暗）", nextScene: "templeRight" },
+                    { text: "离开神庙", nextScene: "templeEntrance" }
+                ],
+                items: []
+            },
+            templeLeft: {
+                description: "左侧通道通向一个小房间，墙壁上布满了壁画，描绘着古代祭祀的场景。房间角落里有一个破旧的木箱。",
+                background: "https://picsum.photos/id/1055/1200/800",
+                choices: [
+                    { text: "查看壁画", action: "examineLeftMural" },
+                    { text: "打开木箱", action: "openLeftChest" },
+                    { text: "返回大厅", nextScene: "templeInterior" }
+                ],
+                items: []
+            },
+            templeRight: {
+                description: "右侧通道比左侧更暗，空气中有一股潮湿的气息。尽头似乎有一扇石门，但被什么东西挡住了。这里非常黑暗，需要照明才能看清。",
+                background: "https://picsum.photos/id/1058/1200/800",
+                choices: [
+                    { text: "尝试移开障碍物", action: "moveObstacle" },
+                    { text: "搜索通道", action: "searchRightPassage" },
+                    { text: "返回大厅", nextScene: "templeInterior" }
+                ],
+                items: []
+            },
+            treasureChamber: {
+                description: "你找到了宝藏密室！房间中央有一个巨大的宝箱，上面有复杂的锁。墙壁上挂着古老的壁画。",
+                background: "https://picsum.photos/id/1073/1200/800",
+                choices: [
+                    { text: "尝试打开宝箱", action: "openTreasureChest" },
+                    { text: "研究壁画", action: "studyMurals" },
+                    { text: "返回大厅", nextScene: "templeInterior" }
+                ],
+                items: []
+            }
+        };
+
+        // 物品定义
+        const items = {
+            map: {
+                name: "古老地图",
+                icon: "fa-map",
+                description: "一张泛黄的羊皮纸地图，上面用古老的墨水标记着岛屿上的重要地点。",
+                detailedDescription: "地图上标记了几个关键位置：一个标记为'入口'的海滩，一片标记为'危险'的森林，一条河流，以及河对岸标记为'目标'的神庙。地图角落还有一个小标记，指向洞穴的位置，并标注着'钥匙'字样。",
+                uses: [
+                    "在森林中不会迷路",
+                    "显示河流的安全过河点",
+                    "标记了宝藏的大致位置"
+                ],
+                requiredFor: ["navigateForest", "findSafeCrossing"]
+            },
+            key: {
+                name: "青铜钥匙",
+                icon: "fa-key",
+                description: "一把古老的青铜钥匙，表面布满铜绿，但钥匙齿依然清晰。",
+                detailedDescription: "这把钥匙比普通钥匙大一些，似乎是为某种特殊锁具设计的。钥匙柄上的花纹与神庙入口处的符号相似，很可能与宝藏箱的锁匹配。",
+                uses: [
+                    "可以打开宝藏密室中的宝箱",
+                    "可能适用于神庙中的其他锁具"
+                ],
+                requiredFor: ["openTreasureChest"]
+            },
+            torch: {
+                name: "火把",
+                icon: "fa-fire",
+                description: "一根捆扎结实的树枝，顶端包裹着浸过油脂的布料，可以点燃提供照明。",
+                detailedDescription: "这把火把制作得很专业，似乎是以前的探险者留下的。旁边还有一小袋火石，可以用来点燃。有了它，你可以探索黑暗的洞穴和通道。",
+                uses: [
+                    "照亮黑暗的洞穴",
+                    "照亮神庙中的黑暗通道",
+                    "可以驱赶小型野兽",
+                    "让你看清被黑暗遮挡的物体"
+                ],
+                requiredFor: ["exploreCaveDeep", "templeRight", "seeCaveDrawings"]
+            },
+            stone: {
+                name: "奇特石头",
+                icon: "fa-diamond",
+                description: "一块表面光滑的椭圆形石头，上面刻有与神庙符号相似的图案。",
+                detailedDescription: "这块石头似乎不是自然形成的，上面的雕刻非常精细，与神庙入口处石像手中的凹槽形状完全吻合。这可能是某种仪式用品或钥匙。",
+                uses: [
+                    "可以放入神庙石像手中的凹槽",
+                    "上面的符号可能是解开某个谜题的线索"
+                ],
+                requiredFor: ["solveStatuePuzzle", "accessSecretPassage"]
+            }
+            // 移除了古老硬币
+        };
+
+        // 音效定义
+        const sounds = {
+            success: new Audio("https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3"),
+            failure: new Audio("https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3"),
+            click: new Audio("https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3"),
+            discovery: new Audio("https://assets.mixkit.co/sfx/preview/mixkit-unlocking-563.mp3"),
+            ambient: new Audio("https://assets.mixkit.co/sfx/preview/mixkit-forest-stream-ambience-1242.mp3"),
+            doorOpen: new Audio("https://assets.mixkit.co/sfx/preview/mixkit-creaky-door-opening-563.mp3"),
+            itemPickup: new Audio("https://assets.mixkit.co/sfx/preview/mixkit-unlocking-563.mp3")
+        };
+
+        // DOM元素
+        const sceneContainer = document.getElementById('sceneContainer');
+        const narration = document.getElementById('narration');
+        const choices = document.getElementById('choices');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const inventory = document.getElementById('inventory');
+        const startAdventure = document.getElementById('startAdventure');
+        const puzzleArea = document.getElementById('puzzleArea');
+        const puzzleTitle = document.getElementById('puzzleTitle');
+        const puzzleContent = document.getElementById('puzzleContent');
+        const puzzleSolution = document.getElementById('puzzleSolution');
+        const resultModal = document.getElementById('resultModal');
+        const resultIcon = document.getElementById('resultIcon');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultMessage = document.getElementById('resultMessage');
+        const playAgainBtn = document.getElementById('playAgainBtn');
+        const soundToggle = document.getElementById('soundToggle');
+        const restartBtn = document.getElementById('restartBtn');
+        const itemDetailModal = document.getElementById('itemDetailModal');
+        const itemDetailName = document.getElementById('itemDetailName');
+        const itemDetailIcon = document.getElementById('itemDetailIcon');
+        const itemDetailDesc = document.getElementById('itemDetailDesc');
+        const itemDetailUse = document.getElementById('itemDetailUse');
+        const closeItemDetail = document.getElementById('closeItemDetail');
+
+        // 初始化游戏
+        function initGame() {
+            // 重置游戏状态
+            Object.assign(gameState, {
+                progress: 0,
+                inventory: [],
+                currentScene: 'start',
+                hasMap: false,
+                hasKey: false,
+                scenesCompleted: [],
+                hintsUsed: {}
+            });
+            
+            updateProgress(0);
+            updateInventory();
+            resultModal.classList.add('hidden');
+            itemDetailModal.classList.add('hidden');
+            
+            // 绑定事件
+            startAdventure.addEventListener('click', startGame);
+            playAgainBtn.addEventListener('click', restartGame);
+            soundToggle.addEventListener('click', toggleSound);
+            restartBtn.addEventListener('click', restartGame);
+            closeItemDetail.addEventListener('click', () => {
+                itemDetailModal.classList.add('hidden');
+                playSound('click');
+            });
+            
+            // 循环播放环境音效
+            sounds.ambient.loop = true;
+            sounds.ambient.volume = 0.3;
+        }
+
+        // 开始游戏
+        function startGame() {
+            playSound('click');
+            document.getElementById('startScene').classList.add('opacity-0');
+            
+            setTimeout(() => {
+                document.getElementById('startScene').remove();
+                goToScene('beach');
+                playSound('ambient');
+            }, 1500);
+        }
+
+        // 前往指定场景
+        function goToScene(sceneName) {
+            if (!gameScenes[sceneName]) {
+                console.error(`场景 ${sceneName} 不存在`);
+                return;
+            }
+            
+            const scene = gameScenes[sceneName];
+            gameState.currentScene = sceneName;
+            
+            // 添加场景到已完成列表（去重）
+            if (!gameState.scenesCompleted.includes(sceneName)) {
+                gameState.scenesCompleted.push(sceneName);
+                updateProgress((gameState.scenesCompleted.length / Object.keys(gameScenes).length) * 100);
+            }
+            
+            // 创建新场景元素
+            const sceneElement = document.createElement('div');
+            sceneElement.id = `${sceneName}Scene`;
+            sceneElement.className = 'scene-transition absolute inset-0 bg-cover bg-center opacity-0';
+            sceneElement.style.backgroundImage = `url('${scene.background}')`;
+            
+            // 添加半透明遮罩
+            const overlay = document.createElement('div');
+            overlay.className = 'absolute inset-0 bg-black/30';
+            sceneElement.appendChild(overlay);
+            
+            // 添加到容器
+            sceneContainer.appendChild(sceneElement);
+            
+            // 触发过渡动画
+            setTimeout(() => {
+                sceneElement.classList.remove('opacity-0');
+            }, 100);
+            
+            // 更新叙述和选择，考虑物品影响
+            updateSceneWithItems(scene);
+            
+            // 移除旧场景
+            const oldScenes = sceneContainer.querySelectorAll('div[id$="Scene"]:not(:last-child)');
+            oldScenes.forEach(oldScene => {
+                setTimeout(() => {
+                    oldScene.remove();
+                }, 1500);
+            });
+            
+            // 隐藏谜题区域
+            puzzleArea.classList.add('hidden');
+            
+            // 检查当前场景是否需要特定物品，并提示
+            checkItemRequirements(sceneName);
+        }
+
+        // 根据拥有的物品更新场景描述和选项
+        function updateSceneWithItems(scene) {
+            let description = scene.description;
+            let sceneChoices = [...scene.choices];
+            
+            // 地图在森林中的效果
+            if (scene.id === 'forestPath' && hasItem('map')) {
+                description += " 你查看了地图，发现前方不远处有一条河流，地图上标记了一个安全的过河点。";
+            }
+            
+            // 地图在河边的效果
+            if (scene.id === 'river' && hasItem('map')) {
+                description += " 你拿出地图，上面清晰地标记了一处水流较缓的浅滩，可以安全过河。";
+                // 替换选项为更优选择
+                sceneChoices = sceneChoices.filter(choice => choice.text !== "尝试踩着石头过河");
+                sceneChoices.unshift({ text: "按照地图指示前往浅滩", action: "useMapToCrossRiver" });
+            }
+            
+            updateNarration(description);
+            updateChoices(sceneChoices);
+        }
+
+        // 检查当前场景是否需要特定物品，并提示玩家
+        function checkItemRequirements(sceneName) {
+            // 洞穴场景需要火把
+            if (sceneName === 'cave' && !hasItem('torch')) {
+                showItemHint("洞穴内非常黑暗，你需要一个火把才能看清周围环境。记得在森林小径上有机会找到火把。");
+            }
+            
+            // 神庙右侧通道需要火把
+            if (sceneName === 'templeRight' && !hasItem('torch')) {
+                showItemHint("这个通道太暗了，你需要火把才能继续。你可以回到森林小径，在路边倒下的大树附近找找看。");
+            }
+            
+            // 石像检查需要奇特石头
+            if (sceneName === 'templeEntrance' && !hasItem('stone') && 
+                gameState.scenesCompleted.includes('cave') && hasItem('torch')) {
+                showItemHint("左侧石像手中有个凹槽，似乎需要放置什么东西。你记得在洞穴里见过类似符号的物品。");
+            }
+            
+            // 宝藏密室需要钥匙
+            if (sceneName === 'treasureChamber' && !hasItem('key')) {
+                showItemHint("宝箱被锁住了。你可以在神庙大厅的石台上找到钥匙。");
+            }
+        }
+
+        // 显示物品相关提示
+        function showItemHint(message) {
+            const currentScene = gameState.currentScene;
+            
+            // 允许每个场景多次显示提示，帮助卡住的玩家
+            const hintId = `hint-${currentScene}-${Date.now()}`;
+            
+            setTimeout(() => {
+                const hintElement = document.createElement('div');
+                hintElement.id = hintId;
+                hintElement.className = 'text-sm bg-amber-100 text-amber-800 p-2 rounded mt-3 inline-block';
+                hintElement.innerHTML = `<i class="fa fa-lightbulb-o mr-1"></i> ${message}`;
+                
+                const interactionArea = document.getElementById('interactionArea');
+                interactionArea.appendChild(hintElement);
+                
+                // 7秒后自动移除提示
+                setTimeout(() => {
+                    const el = document.getElementById(hintId);
+                    if (el) {
+                        el.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+                        setTimeout(() => el.remove(), 500);
+                    }
+                }, 7000);
+            }, 1000);
+        }
+
+        // 更新叙述文本
+        function updateNarration(text) {
+            narration.classList.add('opacity-0');
+            
+            setTimeout(() => {
+                narration.textContent = text;
+                narration.classList.remove('opacity-0');
+                narration.classList.add('transition-opacity', 'duration-500');
+            }, 300);
+        }
+
+        // 更新选择按钮
+        function updateChoices(choiceList) {
+            choices.innerHTML = '';
+            
+            choiceList.forEach(choice => {
+                const button = document.createElement('button');
+                button.className = 'bg-white/80 backdrop-blur hover:bg-white text-adventure-brown font-bold py-2 px-6 rounded-full shadow-md transform hover:scale-105 transition-all';
+                button.innerHTML = `${choice.text} <i class="fa fa-arrow-right ml-1"></i>`;
+                
+                if (choice.nextScene) {
+                    button.addEventListener('click', () => {
+                        playSound('click');
+                        goToScene(choice.nextScene);
+                    });
+                } else if (choice.action) {
+                    button.addEventListener('click', () => {
+                        playSound('click');
+                        performAction(choice.action);
+                    });
+                }
+                
+                choices.appendChild(button);
+            });
+        }
+
+        // 更新进度条
+        function updateProgress(percent) {
+            gameState.progress = percent;
+            progressBar.style.width = `${percent}%`;
+            progressText.textContent = `${Math.round(percent)}%`;
+        }
+
+        // 更新物品栏
+        function updateInventory() {
+            inventory.innerHTML = '';
+            
+            if (gameState.inventory.length === 0) {
+                const emptySlot = document.createElement('div');
+                emptySlot.className = 'w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-400';
+                emptySlot.innerHTML = '<i class="fa fa-empty"></i>';
+                inventory.appendChild(emptySlot);
+                return;
+            }
+            
+            gameState.inventory.forEach(itemId => {
+                const item = items[itemId];
+                const itemElement = document.createElement('div');
+                itemElement.className = 'w-10 h-10 bg-adventure-brown/10 hover:bg-adventure-brown/20 rounded-full flex items-center justify-center text-adventure-brown cursor-pointer transition-all';
+                itemElement.innerHTML = `<i class="fa ${item.icon}"></i>`;
+                itemElement.title = `${item.name}: 点击查看详情`;
+                
+                // 添加点击事件查看物品详情
+                itemElement.addEventListener('click', () => showItemDetails(itemId));
+                
+                // 如果是当前场景需要的物品，添加发光效果
+                if (isItemNeededInCurrentScene(itemId)) {
+                    itemElement.classList.add('item-glow');
+                }
+                
+                inventory.appendChild(itemElement);
+            });
+        }
+
+        // 检查物品是否在当前场景中需要
+        function isItemNeededInCurrentScene(itemId) {
+            const currentScene = gameState.currentScene;
+            
+            switch(itemId) {
+                case 'torch':
+                    return currentScene === 'cave' || currentScene === 'templeRight';
+                case 'stone':
+                    return currentScene === 'templeEntrance';
+                case 'key':
+                    return currentScene === 'treasureChamber';
+                case 'map':
+                    return currentScene === 'forestPath' || currentScene === 'river';
+                default:
+                    return false;
+            }
+        }
+
+        // 显示物品详情
+        function showItemDetails(itemId) {
+            const item = items[itemId];
+            if (!item) return;
+            
+            itemDetailName.textContent = item.name;
+            itemDetailIcon.innerHTML = `<i class="fa ${item.icon}"></i>`;
+            itemDetailDesc.textContent = item.detailedDescription;
+            
+            // 显示物品用途
+            if (item.uses && item.uses.length > 0) {
+                let usesHtml = "<strong>可能的用途：</strong><ul class='list-disc list-inside mt-1'>";
+                item.uses.forEach(use => {
+                    usesHtml += `<li>${use}</li>`;
+                });
+                usesHtml += "</ul>";
+                itemDetailUse.innerHTML = usesHtml;
+            } else {
+                itemDetailUse.textContent = "目前还不清楚这个物品的用途。";
+            }
+            
+            itemDetailModal.classList.remove('hidden');
+            playSound('click');
+        }
+
+        // 添加物品到 inventory
+        function addItem(itemId) {
+            if (!gameState.inventory.includes(itemId)) {
+                gameState.inventory.push(itemId);
+                updateInventory();
+                playSound('itemPickup');
+                
+                const item = items[itemId];
+                
+                // 显示获得物品的详细消息
+                const messageElement = document.createElement('div');
+                messageElement.className = 'fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur p-4 rounded-lg shadow-lg max-w-md w-full fade-in z-40';
+                messageElement.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <div class="text-2xl text-adventure-brown"><i class="fa ${item.icon}"></i></div>
+                        <div>
+                            <h4 class="font-bold text-adventure-brown">发现了 ${item.name}！</h4>
+                            <p class="text-sm mt-1">${item.description}</p>
+                            <p class="text-xs text-gray-500 mt-2">点击物品栏中的物品查看详情</p>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(messageElement);
+                
+                // 4秒后自动移除提示
+                setTimeout(() => {
+                    messageElement.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+                    setTimeout(() => messageElement.remove(), 500);
+                }, 4000);
+                
+                // 特殊物品的额外逻辑
+                if (itemId === 'map') gameState.hasMap = true;
+                if (itemId === 'key') gameState.hasKey = true;
+                
+                return true;
+            }
+            return false;
+        }
+
+        // 检查是否拥有某个物品
+        function hasItem(itemId) {
+            return gameState.inventory.includes(itemId);
+        }
+
+        // 播放音效
+        function playSound(soundId) {
+            if (gameState.soundEnabled && sounds[soundId]) {
+                // 克隆音频以允许快速连续播放
+                const sound = sounds[soundId].cloneNode();
+                sound.play().catch(e => console.log("Audio play prevented:", e));
+            }
+        }
+
+        // 切换音效开关
+        function toggleSound() {
+            gameState.soundEnabled = !gameState.soundEnabled;
+            
+            if (gameState.soundEnabled) {
+                soundToggle.innerHTML = '<i class="fa fa-volume-up text-adventure-brown text-xl"></i>';
+                sounds.ambient.play().catch(e => console.log("Audio play prevented:", e));
+            } else {
+                soundToggle.innerHTML = '<i class="fa fa-volume-off text-adventure-brown text-xl"></i>';
+                Object.values(sounds).forEach(sound => sound.pause());
+            }
+        }
+
+        // 显示结果模态框
+        function showResult(isSuccess, title, message, icon) {
+            resultTitle.textContent = title;
+            resultMessage.textContent = message;
+            resultIcon.innerHTML = `<i class="fa ${icon} ${isSuccess ? 'text-adventure-treasure' : 'text-red-500'}"></i>`;
+            
+            resultModal.classList.remove('hidden');
+            playSound(isSuccess ? 'success' : 'failure');
+            sounds.ambient.pause();
+        }
+
+        // 重启游戏
+        function restartGame() {
+            playSound('click');
+            sceneContainer.innerHTML = `
+                <div id="startScene" class="scene-transition absolute inset-0 bg-cover bg-center" style="background-image: url('https://picsum.photos/id/1015/1200/800');">
+                    <div class="absolute inset-0 bg-black/40"></div>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center text-white text-center p-6">
+                        <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] mb-6 text-shadow-lg">欢迎来到神秘岛屿</h2>
+                        <p class="text-[clamp(1rem,2vw,1.25rem)] max-w-lg mb-8 text-shadow">
+                            传说在这座岛屿上藏有一批失落已久的黄金宝藏。
+                            你将穿越森林、渡过河流、探索古老神庙，解开重重谜题。
+                            准备好开始这场冒险了吗？
+                        </p>
+                        <button id="startAdventure" class="bg-adventure-brown hover:bg-adventure-brown/80 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all">
+                            开始冒险 <i class="fa fa-compass ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // 清除可能存在的物品提示
+            document.querySelectorAll('.bg-amber-100').forEach(el => el.remove());
+            document.querySelectorAll('.fixed.bottom-4').forEach(el => el.remove());
+            
+            // 重新绑定开始按钮事件
+            document.getElementById('startAdventure').addEventListener('click', startGame);
+            
+            initGame();
+        }
+
+        // 执行特定动作
+        async function performAction(action) {
+            switch(action) {
+                case 'searchShore':
+                    // 搜索岸边，有机会找到地图
+                    updateNarration("你仔细搜索了岸边的岩石和沙堆...");
+                    choices.innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin text-adventure-brown text-2xl"></i></div>';
+                    
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    if (Math.random() > 0.4 && !hasItem('map')) {
+                        addItem('map');
+                        updateChoices(gameScenes.beach.choices);
+                    } else {
+                        updateNarration("你在岸边找到了一些漂亮的贝壳和石头，但没有什么特别有用的东西。");
+                        updateChoices(gameScenes.beach.choices);
+                    }
+                    break;
+                    
+                case 'takeNarrowPath':
+                    // 走狭窄的路，有风险
+                    updateNarration("你决定走狭窄的路，开始穿过荆棘...");
+                    choices.innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin text-adventure-brown text-2xl"></i></div>';
+                    
+                    await new Promise(resolve => setTimeout(resolve, 2500));
+                    
+                    // 有地图则成功率提高
+                    const successRate = hasItem('map') ? 0.7 : 0.3;
+                    
+                    if (Math.random() > successRate) {
+                        updateNarration("虽然有些困难，但你成功穿过了荆棘丛，发现了一条捷径！");
+                        goToScene('river');
+                    } else {
+                        updateNarration("荆棘太密了，你被划伤了，不得不退回来。");
+                        updateChoices(gameScenes.forestEntrance.choices);
+                    }
+                    break;
+                    
+                case 'examineCaveWall':
+                    // 检查洞穴墙壁 - 火把的作用
+                    if (!hasItem('torch')) {
+                        updateNarration("洞穴太暗了，你只能隐约看到墙壁上有刻痕，但看不清具体内容。你需要火把才能看清楚这些刻痕。");
+                        updateChoices(gameScenes.cave.choices);
+                    } else {
+                        updateNarration("你用火把照亮墙壁，发现刻痕是某种地图！上面标记着岛屿的各个地点，包括一个标有'宝藏'的位置。你还发现了一块刻有相同符号的石头。");
+                        addItem('stone');
+                        updateChoices(gameScenes.cave.choices);
+                    }
+                    break;
+                    
+                case 'exploreCaveDeep':
+                    // 深入洞穴 - 必须有火把
+                    if (!hasItem('torch')) {
+                        updateNarration("洞穴深处一片漆黑，你什么也看不见，脚下还很湿滑，继续前进太危险了。你需要先找到火把才能安全探索这里。");
+                        // 增加明确的指引
+                        const hint = document.createElement('div');
+                        hint.className = 'text-sm bg-amber-100 text-amber-800 p-2 rounded mt-3';
+                        hint.innerHTML = '<i class="fa fa-info-circle mr-1"></i> 你可以回到森林小径，在路边探索寻找火把。';
+                        choices.parentNode.insertBefore(hint, choices);
+                        
+                        updateChoices(gameScenes.cave.choices);
+                    } else {
+                        updateNarration("你举着火把深入洞穴，火光照亮了前方的路...");
+                        choices.innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin text-adventure-brown text-2xl"></i></div>';
+                        
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                        
+                        // 这里不再获取钥匙，改为获取其他物品
+                        updateNarration("在洞穴深处，你发现了一些古代陶器碎片，上面有与神庙符号相似的图案。");
+                        updateChoices(gameScenes.cave.choices);
+                    }
+                    break;
+                    
+                case 'exploreOffPath':
+                    // 离开大路探索 - 确保获得火把
+                    updateNarration("你离开大路，走向那棵倒下的大树，开始仔细探索周围...");
+                    choices.innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin text-adventure-brown text-2xl"></i></div>';
+                    
+                    await new Promise(resolve => setTimeout(resolve, 2500));
+                    
+                    // 确保获得火把
+                    if (!hasItem('torch')) {
+                        updateNarration("在倒下的大树下，你发现了一根制作精良的火把和一小袋火石！这正是探索黑暗地方所需要的。");
+                        addItem('torch');
+                        updateChoices(gameScenes.forestPath.choices);
+                    } else {
+                        updateNarration("你在森林中探索了一番，虽然没有找到特别的东西，但对周围环境有了更好的了解。");
+                        updateChoices(gameScenes.forestPath.choices);
+                    }
+                    break;
+                    
+                case 'crossRiverStones':
+                    // 踩着石头过河
+                    updateNarration("你决定踩着石头过河...");
+                    choices.innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin text-adventure-brown text-2xl"></i></div>';
+                    
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    
+                    // 没有地图则成功率降低
+                    const crossRate = hasItem('map') ? 0.7 : 0.3;
+                    
+                    if (Math.random() > crossRate) {
+                        updateNarration("你小心翼翼地踩着石头，成功渡过了河流！对岸就是那座神秘的建筑。");
+                        goToScene('templeEntrance');
+                    } else {
+                        updateNarration("一块石头松动了，你差点掉进河里，幸好及时抓住了另一块石头爬了回来。");
+                        updateChoices(gameScenes.river.choices);
+                    }
+                    break;
+                    
+                case 'useMapToCrossRiver':
+                    // 使用地图过河
+                    updateNarration("你按照地图指示前往标记的浅滩...");
+                    choices.innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin text-adventure-brown text-2xl"></i></div>';
+                    
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    updateNarration("地图非常准确，你轻松地通过浅滩渡过了河流，几乎没有弄湿衣服。对岸的神庙清晰可见。");
+                    goToScene('templeEntrance');
+                    break;
+                    
+                case 'searchForCrossing':
+                    // 寻找其他过河点
+                    updateNarration("你沿着河岸寻找更容易过河的地方...");
+                    choices.innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin text-adventure-brown text-2xl"></i></div>';
+                    
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    
+                    if (Math.random() > 0.5) {
+                        updateNarration("你找到了一处水流较缓的浅滩，可以安全地过河。");
+                        goToScene('templeEntrance');
+                    } else {
+                        updateNarration("你沿着河岸走了很远，但没有找到更好的过河点，只好回到原来的地方。");
+                        updateChoices(gameScenes.river.choices);
+                    }
+                    break;
+                    
+                case 'enterTemple':
+                    // 进入神庙
+                    showPuzzle({
+                        title: "神庙入口谜题",
+                        content: "神庙大门紧闭，上面刻着一行字：'我有许多牙齿，但我不能咬。我是什么？'",
+                        solution: "梳子",
+                        hints: ["它通常放在浴室里", "用来整理头发"],
+                        onSuccess: async () => {
+                            playSound('doorOpen');
+                            updateNarration("大门缓缓打开，发出沉重的嘎吱声...");
+                            
+                            // 显示门打开的动画效果
+                            choices.innerHTML = '<div class="text-center"><i class="fa fa-door-open text-adventure-brown text-2xl fade-in"></i></div>';
+                            
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            goToScene('templeInterior');
+                        },
+                        onFailure: () => {
+                            updateNarration("你的答案不正确，大门没有打开。再试一次。");
+                            // 显示提示
+                            const puzzle = gameScenes.templeEntrance.puzzle;
+                            if (puzzle.hints && puzzle.hints.length > 0 && !puzzle.hintShown) {
+                                puzzle.hintShown = true;
+                                const hint = document.createElement('div');
+                                hint.className = 'text-sm text-gray-600 mt-2 italic';
+                                hint.textContent = `提示: ${puzzle.hints[0]}`;
+                                puzzleContent.appendChild(hint);
+                            }
+                        }
+                    });
+                    break;
+                    
+                case 'examineStatues':
+                    // 检查石像
+                    if (hasItem('stone')) {
+                        updateNarration("你拿出找到的石头，发现它与左侧石像手中的凹槽完美匹配！放入石头后，石像缓缓转动，露出了一个通往地下的秘密通道。");
+                        goToScene('treasureChamber');
+                    } else {
+                        updateNarration("两座石像看起来很古老，左侧石像的手中有一个凹槽，形状奇特，像是要放置什么特定的物品。石像上刻着与洞穴墙壁相同的符号。");
+                        updateChoices(gameScenes.templeEntrance.choices);
+                    }
+                    break;
+                    
+                case 'surveyArea':
+                    // 查看周围环境
+                    updateNarration("你环顾四周，发现神庙后方有一个小入口，似乎可以绕到里面。");
+                    const newChoices = [...gameScenes.templeEntrance.choices];
+                    newChoices.push({ text: "探索神庙后方", nextScene: "templeInterior" });
+                    updateChoices(newChoices);
+                    break;
+                    
+                case 'checkAltar':
+                    // 检查石台 - 这里改为100%获得钥匙
+                    updateNarration("你检查了中央的石台，上面刻着：'只有照亮所有角落，宝藏才会显现'。石台上放着一把青铜钥匙，正是打开宝箱所需要的！");
+                    addItem('key'); // 确保获得钥匙
+                    updateChoices(gameScenes.templeInterior.choices);
+                    break;
+                    
+                case 'examineLeftMural':
+                    // 查看左侧壁画
+                    updateNarration("壁画描绘了古人如何建造这座神庙，以及他们如何将宝藏藏在一个隐秘的房间里。壁画上还画着一把钥匙的图案，指向神庙大厅的石台。");
+                    updateChoices(gameScenes.templeLeft.choices);
+                    break;
+                    
+                case 'openLeftChest':
+                    // 打开左侧木箱
+                    updateNarration("你打开了破旧的木箱，里面只有一些灰尘和几块普通的石头。看起来是以前的祭司存放物品的地方。");
+                    updateChoices(gameScenes.templeLeft.choices);
+                    break;
+                    
+                case 'moveObstacle':
+                    // 移开障碍物
+                    if (!hasItem('torch')) {
+                        updateNarration("通道太暗了，你看不清是什么挡住了石门。你完全无法判断前方情况，必须先找到火把才能继续。");
+                        // 增加明确指引
+                        const hint = document.createElement('div');
+                        hint.className = 'text-sm bg-amber-100 text-amber-800 p-2 rounded mt-3';
+                        hint.innerHTML = '<i class="fa fa-info-circle mr-1"></i> 回到森林小径，在路边探索可以找到火把。';
+                        choices.parentNode.insertBefore(hint, choices);
+                        
+                        updateChoices(gameScenes.templeRight.choices);
+                    } else {
+                        updateNarration("你用火把照亮通道，发现是一块大石头挡住了石门。你尝试推动它...");
+                        choices.innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin text-adventure-brown text-2xl"></i></div>';
+                        
+                        await new Promise(resolve => setTimeout(resolve, 2500));
+                        
+                        if (Math.random() > 0.6) {
+                            updateNarration("经过一番努力，你成功移开了石头！石门后面是一条通往地下的阶梯，似乎通向某个秘密房间。");
+                            const newChoices = [...gameScenes.templeRight.choices];
+                            newChoices.push({ text: "走下阶梯", nextScene: "treasureChamber" });
+                            updateChoices(newChoices);
+                        } else {
+                            updateNarration("石头太重了，你一个人无法移动它。也许需要找其他方法或工具。");
+                            updateChoices(gameScenes.templeRight.choices);
+                        }
+                    }
+                    break;
+                    
+                case 'searchRightPassage':
+                    // 搜索右侧通道
+                    if (!hasItem('torch')) {
+                        updateNarration("通道太暗了，你什么也看不见，根本无法搜索。你需要火把才能在这里进行任何有意义的探索。");
+                        updateChoices(gameScenes.templeRight.choices);
+                    } else {
+                        updateNarration("你用火把照亮通道，仔细搜索每一个角落...");
+                        choices.innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin text-adventure-brown text-2xl"></i></div>';
+                        
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        
+                        updateNarration("你在通道尽头发现了一些壁画残片，上面描绘着人们使用火把探索黑暗地方的场景。");
+                        updateChoices(gameScenes.templeRight.choices);
+                    }
+                    break;
+                    
+                case 'openTreasureChest':
+                    // 打开宝箱
+                    if (!hasItem('key')) {
+                        updateNarration("宝箱被一个复杂的锁锁住了，看起来需要特定的钥匙才能打开。锁上的图案与神庙大厅石台上的钥匙匹配。");
+                        updateChoices(gameScenes.treasureChamber.choices);
+                    } else {
+                        updateNarration("你用找到的青铜钥匙插入宝箱的锁孔，轻轻一转，听到了锁芯转动的声音...");
+                        choices.innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin text-adventure-brown text-2xl"></i></div>';
+                        
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                        
+                        showResult(
+                            true,
+                            "恭喜你找到宝藏！",
+                            "宝箱中装满了黄金、珠宝和古老的文物。你成功完成了这场寻宝冒险！",
+                            "fa-diamond text-adventure-treasure float"
+                        );
+                    }
+                    break;
+                    
+                case 'studyMurals':
+                    // 研究壁画
+                    updateNarration("壁画描绘了古代人藏宝的全过程，你确认了钥匙确实是在神庙大厅石台上找到的那一把。壁画还展示了如何通过石像进入这个密室的方法。");
+                    updateChoices(gameScenes.treasureChamber.choices);
+                    break;
+            }
+        }
+
+        // 显示谜题
+        function showPuzzle(puzzle) {
+            puzzleTitle.textContent = puzzle.title;
+            puzzleContent.textContent = puzzle.content;
+            puzzleSolution.innerHTML = '';
+            
+            // 保存谜题信息以便后续使用
+            gameScenes[gameState.currentScene].puzzle = puzzle;
+            puzzle.hintShown = false;
+            
+            // 创建输入框
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-adventure-brown';
+            input.placeholder = '输入答案...';
+            
+            // 创建提交按钮
+            const submitBtn = document.createElement('button');
+            submitBtn.className = 'bg-adventure-brown hover:bg-adventure-brown/80 text-white font-bold py-2 px-6 rounded-lg shadow-md transform hover:scale-105 transition-all';
+            submitBtn.textContent = '提交';
+            
+            // 提交逻辑
+            submitBtn.addEventListener('click', () => checkAnswer(input.value, puzzle));
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') checkAnswer(input.value, puzzle);
+            });
+            
+            puzzleSolution.appendChild(input);
+            puzzleSolution.appendChild(submitBtn);
+            puzzleArea.classList.remove('hidden');
+            
+            // 自动聚焦
+            input.focus();
+        }
+
+        // 检查谜题答案
+        function checkAnswer(answer, puzzle) {
+            // 清理输入：去除空格并转换为小写
+            const cleanedAnswer = answer.trim().toLowerCase();
+            
+            // 允许答案的多种形式
+            const validAnswers = [
+                puzzle.solution.toLowerCase(),
+                ...(puzzle.alternatives || [])
+            ];
+            
+            if (validAnswers.includes(cleanedAnswer)) {
+                playSound('success');
+                puzzleArea.classList.add('hidden');
+                puzzle.onSuccess();
+            } else {
+                playSound('failure');
+                puzzleSolution.classList.add('shake');
+                setTimeout(() => {
+                    puzzleSolution.classList.remove('shake');
+                }, 500);
+                puzzle.onFailure();
+            }
+        }
+
+        // 初始化游戏
+        window.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>
