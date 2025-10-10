@@ -90,12 +90,72 @@
 </head>
 
 <body class="bg-adventure-sand min-h-screen overflow-x-hidden font-adventure text-gray-800">
-    <!-- 游戏声音控制器 -->
+     <!-- 全景页（0.png） -->
+    <div id="panoramaPage" class="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-gradient-to-br from-adventure-sand to-adventure-brown/20">
+      <div class="bg-white/90 backdrop-blur rounded-2xl p-8 shadow-2xl max-w-4xl w-full mx-4">
+        <h2 class="text-4xl font-bold mb-8 text-adventure-brown text-center text-shadow">神秘岛屿全景地图</h2>
+        <div class="relative w-full h-[500px] bg-white rounded-xl shadow-lg overflow-hidden">
+          <!-- 使用photos文件夹中的图片 -->
+          <img src="无标题.png" class="w-full h-full object-cover" alt="岛屿全景图" />
+          
+          <!-- 地点按钮区域 -->
+          <!-- 洞穴 - 正中间 -->
+          <button class="absolute left-[50%] top-[50%] w-24 h-24 bg-red-500/20 hover:bg-red-500/40 rounded-full border-2 border-red-500 flex items-center justify-center group transition-all duration-300 transform hover:scale-110" 
+                  onclick="enterLocation('cave')" title="神秘洞穴">
+            <div class="text-center text-white">
+              <i class="fa fa-moon-o text-xl mb-1 block"></i>
+              <span class="text-xs font-bold">洞穴</span>
+            </div>
+          </button>
+          
+          <!-- 海岸 - 正下方 -->
+          <button class="absolute left-[50%] top-[85%] w-24 h-24 bg-blue-500/20 hover:bg-blue-500/40 rounded-full border-2 border-blue-500 flex items-center justify-center group transition-all duration-300 transform hover:scale-110" 
+                  onclick="enterLocation('beach')" title="海岸沙滩">
+            <div class="text-center text-white">
+              <i class="fa fa-ship text-xl mb-1 block"></i>
+              <span class="text-xs font-bold">海岸</span>
+            </div>
+          </button>
+          
+          <!-- 森林 - 洞穴左边 -->
+          <button class="absolute left-[30%] top-[50%] w-24 h-24 bg-green-500/20 hover:bg-green-500/40 rounded-full border-2 border-green-500 flex items-center justify-center group transition-all duration-300 transform hover:scale-110" 
+                  onclick="enterLocation('forestEntrance')" title="茂密森林">
+            <div class="text-center text-white">
+              <i class="fa fa-tree text-xl mb-1 block"></i>
+              <span class="text-xs font-bold">森林</span>
+            </div>
+          </button>
+          
+          <!-- 石像 - 洞穴口右旁边 -->
+          <button class="absolute left-[70%] top-[50%] w-24 h-24 bg-yellow-500/20 hover:bg-yellow-500/40 rounded-full border-2 border-yellow-500 flex items-center justify-center group transition-all duration-300 transform hover:scale-110" 
+                  onclick="enterLocation('templeEntrance')" title="古老石像">
+            <div class="text-center text-white">
+              <i class="fa fa-university text-xl mb-1 block"></i>
+              <span class="text-xs font-bold">石像</span>
+            </div>
+          </button>
+        </div>
+        
+        <div class="text-center mt-6">
+          <p class="text-gray-600 mb-4">点击地图上的地点开始你的冒险之旅</p>
+          <button onclick="closePanorama()" class="bg-adventure-brown hover:bg-adventure-brown/80 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all">
+            <i class="fa fa-arrow-left mr-2"></i>返回游戏
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- 游戏控制器 -->
     <div class="fixed top-4 right-4 z-50 flex gap-2">
-        <button id="soundToggle" class="bg-white/80 backdrop-blur p-2 rounded-full shadow-lg hover:bg-white transition-all">
+        <button id="soundToggle" class="bg-white/80 backdrop-blur p-2 rounded-full shadow-lg hover:bg-white transition-all" title="声音开关">
             <i class="fa fa-volume-up text-adventure-brown text-xl"></i>
         </button>
-        <button id="restartBtn" class="bg-white/80 backdrop-blur p-2 rounded-full shadow-lg hover:bg-white transition-all">
+        <button id="saveBtn" class="bg-white/80 backdrop-blur p-2 rounded-full shadow-lg hover:bg-white transition-all" title="保存游戏">
+            <i class="fa fa-save text-adventure-brown text-xl"></i>
+        </button>
+        <button id="panoramaBtn" class="bg-white/80 backdrop-blur p-2 rounded-full shadow-lg hover:bg-white transition-all" title="全景地图">
+            <i class="fa fa-map text-adventure-brown text-xl"></i>
+        </button>
+        <button id="restartBtn" class="bg-white/80 backdrop-blur p-2 rounded-full shadow-lg hover:bg-white transition-all" title="重新开始">
             <i class="fa fa-refresh text-adventure-brown text-xl"></i>
         </button>
     </div>
@@ -218,6 +278,95 @@
             scenesCompleted: [],
             hintsUsed: {} // 记录每个场景使用过的提示
         };
+
+
+
+
+
+
+
+
+
+
+  // 1. 每个场景配背景音乐 - 使用可靠的免费音乐资源
+        const sceneBgms = {
+            beach: "https://www.bensound.com/bensound-music/bensound-sunny.mp3", // 海岸阳光音乐
+            forestEntrance: "https://www.bensound.com/bensound-music/bensound-november.mp3", // 森林自然音
+            cave: "https://www.bensound.com/bensound-music/bensound-creepy.mp3", // 洞穴神秘音
+            forestPath: "https://www.bensound.com/bensound-music/bensound-november.mp3", // 森林小径音
+            river: "https://www.bensound.com/bensound-music/bensound-sunny.mp3", // 河流流动音
+            templeEntrance: "https://www.bensound.com/bensound-music/bensound-creepy.mp3", // 神庙神秘音
+            templeInterior: "https://www.bensound.com/bensound-music/bensound-creepy.mp3", // 神庙内部音
+            templeLeft: "https://www.bensound.com/bensound-music/bensound-creepy.mp3", // 神庙左侧音
+            templeRight: "https://www.bensound.com/bensound-music/bensound-creepy.mp3", // 神庙右侧音
+            treasureChamber: "https://www.bensound.com/bensound-music/bensound-tenderness.mp3" // 宝藏发现音
+        };
+        let currentBgm = null;
+
+
+  // 2. 保存和恢复游戏数据
+        function saveGame() {
+            const saveData = {
+                progress: gameState.progress,
+                inventory: gameState.inventory,
+                currentScene: gameState.currentScene,
+                hasMap: gameState.hasMap,
+                hasKey: gameState.hasKey,
+                soundEnabled: gameState.soundEnabled,
+                scenesCompleted: gameState.scenesCompleted,
+                hintsUsed: gameState.hintsUsed,
+                timestamp: Date.now() // 添加时间戳
+            };
+            localStorage.setItem('islandGameState', JSON.stringify(saveData));
+            console.log('游戏已保存');
+        }
+        
+        function loadGame() {
+            const data = localStorage.getItem('islandGameState');
+            if (data) {
+                try {
+                    const saveData = JSON.parse(data);
+                    Object.assign(gameState, saveData);
+                    console.log('游戏存档已加载');
+                    return true;
+                } catch (e) {
+                    console.error('加载存档失败:', e);
+                    return false;
+                }
+            }
+            return false;
+        }
+        
+        function clearSave() {
+            localStorage.removeItem('islandGameState');
+            console.log('存档已清除');
+        }
+
+
+   // 3. 全景页相关逻辑
+        function showPanorama() {
+            document.getElementById('panoramaPage').style.display = '';
+            document.querySelector('.max-w-6xl').style.display = 'none';
+        }
+        function closePanorama() {
+            document.getElementById('panoramaPage').style.display = 'none';
+            document.querySelector('.max-w-6xl').style.display = '';
+        }
+        function enterLocation(sceneName) {
+            closePanorama();
+            goToScene(sceneName);
+        }
+
+
+
+
+
+
+
+
+
+
+
 
         // 游戏场景和情节定义
         const gameScenes = {
@@ -441,9 +590,34 @@
                 playSound('click');
             });
             
+            // 绑定保存按钮事件
+            const saveBtn = document.getElementById('saveBtn');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', () => {
+                    saveGame();
+                    // 显示保存成功提示
+                    showSaveNotification();
+                });
+            }
+            
             // 循环播放环境音效
             sounds.ambient.loop = true;
             sounds.ambient.volume = 0.3;
+        }
+        
+        // 显示保存成功通知
+        function showSaveNotification() {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-20 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 transform transition-all duration-300';
+            notification.innerHTML = '<i class="fa fa-check mr-2"></i>游戏已保存！';
+            
+            document.body.appendChild(notification);
+            
+            // 3秒后自动移除
+            setTimeout(() => {
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
         }
 
         // 开始游戏
@@ -464,52 +638,48 @@
                 console.error(`场景 ${sceneName} 不存在`);
                 return;
             }
-            
+            // 切换背景音乐
+            if (currentBgm) {
+                currentBgm.pause();
+                currentBgm = null;
+            }
+            if (sceneBgms[sceneName] && gameState.soundEnabled) {
+                currentBgm = new Audio(sceneBgms[sceneName]);
+                currentBgm.loop = true;
+                currentBgm.volume = 0.5;
+                currentBgm.play().catch(()=>{});
+            }
+            // ...原有goToScene逻辑...
             const scene = gameScenes[sceneName];
             gameState.currentScene = sceneName;
-            
-            // 添加场景到已完成列表（去重）
             if (!gameState.scenesCompleted.includes(sceneName)) {
                 gameState.scenesCompleted.push(sceneName);
                 updateProgress((gameState.scenesCompleted.length / Object.keys(gameScenes).length) * 100);
             }
-            
-            // 创建新场景元素
             const sceneElement = document.createElement('div');
             sceneElement.id = `${sceneName}Scene`;
             sceneElement.className = 'scene-transition absolute inset-0 bg-cover bg-center opacity-0';
             sceneElement.style.backgroundImage = `url('${scene.background}')`;
-            
-            // 添加半透明遮罩
             const overlay = document.createElement('div');
             overlay.className = 'absolute inset-0 bg-black/30';
             sceneElement.appendChild(overlay);
-            
-            // 添加到容器
             sceneContainer.appendChild(sceneElement);
-            
-            // 触发过渡动画
             setTimeout(() => {
                 sceneElement.classList.remove('opacity-0');
             }, 100);
-            
-            // 更新叙述和选择，考虑物品影响
             updateSceneWithItems(scene);
-            
-            // 移除旧场景
             const oldScenes = sceneContainer.querySelectorAll('div[id$="Scene"]:not(:last-child)');
             oldScenes.forEach(oldScene => {
                 setTimeout(() => {
                     oldScene.remove();
                 }, 1500);
             });
-            
-            // 隐藏谜题区域
             puzzleArea.classList.add('hidden');
-            
-            // 检查当前场景是否需要特定物品，并提示
             checkItemRequirements(sceneName);
+            saveGame();
         }
+
+
 
         // 根据拥有的物品更新场景描述和选项
         function updateSceneWithItems(scene) {
@@ -625,7 +795,93 @@
             gameState.progress = percent;
             progressBar.style.width = `${percent}%`;
             progressText.textContent = `${Math.round(percent)}%`;
+            const _oriUpdateProgress = updateProgress;
+        updateProgress = function(percent) {
+            _oriUpdateProgress(percent);
+            saveGame();
+        };}
+
+  // 6. 声音开关同步控制BGM
+        const _oriToggleSound = toggleSound;
+        toggleSound = function() {
+            _oriToggleSound();
+            if (currentBgm) {
+                if (gameState.soundEnabled) currentBgm.play().catch(()=>{});
+                else currentBgm.pause();
+            }
+        };
+
+
+         // 7. 入口按钮事件和存档恢复
+        document.addEventListener('DOMContentLoaded', function() {
+            // panorama按钮
+            document.getElementById('panoramaBtn').addEventListener('click', showPanorama);
+            
+            // 检查是否有存档
+            if (loadGame()) {
+                // 如果有存档，显示继续游戏选项
+                showContinueGameOption();
+            } else {
+                // 没有存档，正常显示开始按钮
+                const startBtn = document.getElementById('startAdventure');
+                if (startBtn) {
+                    startBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        showPanorama();
+                    });
+                }
+            }
+        });
+        
+        function showContinueGameOption() {
+            // 创建继续游戏界面
+            const startScene = document.getElementById('startScene');
+            if (startScene) {
+                startScene.innerHTML = `
+                    <div class="absolute inset-0 bg-black/40"></div>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center text-white text-center p-6">
+                        <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] mb-6 text-shadow-lg">欢迎回到神秘岛屿</h2>
+                        <p class="text-[clamp(1rem,2vw,1.25rem)] max-w-lg mb-8 text-shadow">
+                            检测到之前的游戏进度，你想要继续之前的冒险吗？
+                        </p>
+                        <div class="flex gap-4 flex-wrap justify-center">
+                            <button id="continueGame" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all">
+                                <i class="fa fa-play mr-2"></i>继续游戏
+                            </button>
+                            <button id="newGame" class="bg-adventure-brown hover:bg-adventure-brown/80 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:scale-105 transition-all">
+                                <i class="fa fa-refresh mr-2"></i>重新开始
+                            </button>
+                        </div>
+                        <p class="text-sm mt-4 opacity-75">进度: ${Math.round(gameState.progress)}% | 物品: ${gameState.inventory.length}个</p>
+                    </div>
+                `;
+                
+                // 绑定事件
+                document.getElementById('continueGame').addEventListener('click', function() {
+                    // 继续游戏，直接进入当前场景
+                    document.getElementById('panoramaPage').style.display = 'none';
+                    document.querySelector('.max-w-6xl').style.display = '';
+                    goToScene(gameState.currentScene);
+                    updateInventory();
+                    updateProgress(gameState.progress);
+                    // 恢复背景音乐
+                    if (sceneBgms[gameState.currentScene] && gameState.soundEnabled) {
+                        currentBgm = new Audio(sceneBgms[gameState.currentScene]);
+                        currentBgm.loop = true;
+                        currentBgm.volume = 0.5;
+                        currentBgm.play().catch(()=>{});
+                    }
+                });
+                
+                document.getElementById('newGame').addEventListener('click', function() {
+                    // 新游戏，清除存档并重新开始
+                    clearSave();
+                    initGame();
+                    showPanorama();
+                });
+            }
         }
+
 
         // 更新物品栏
         function updateInventory() {
@@ -738,7 +994,14 @@
                 
                 return true;
             }
+  const _oriAddItem = addItem;
+        addItem = function(itemId) {
+            const result = _oriAddItem(itemId);
+            saveGame();
+            return result;
+        };
             return false;
+            
         }
 
         // 检查是否拥有某个物品
